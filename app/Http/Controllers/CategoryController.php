@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+
 
 class CategoryController extends Controller
 {
@@ -16,10 +18,10 @@ class CategoryController extends Controller
         $data = $categories->map(function($category){
             return [
                 'name' => $category->name,
-                'image' => $category->image
+                'image' => $category->image_url
             ];
         });
-        return response()->json(['message' => 'this is all categories', $categories], 200 );
+        return response()->json(['message' => 'this is all categories', $data], 200 );
     }
 
     /**
@@ -31,7 +33,19 @@ class CategoryController extends Controller
             'name' => 'required|string',
             'image' => 'required|image'
         ]);
-        $category = Category::create($validateData);
+    if ($request->hasFile('image')) { 
+        $imageName = $request->file('image')->getClientOriginalName() . "-" . time() . "." . $request->file('image')->getClientOriginalExtension();
+        $request->file('image')->move(public_path('images/categories'), $imageName);
+        $category = Category::create([
+            'name' => $request->name,
+            'image' => $imageName, 
+        ]);
+    } else { 
+        $category = Category::create([
+            'name' => $request->name,
+            'image' => null, 
+        ]);
+    }
         return response()->json(['message' => 'category has been created successfully', $category], 200);
     }
 
@@ -41,6 +55,7 @@ class CategoryController extends Controller
     public function show($id)
     {
         $category = Category::where('id' , $id)->first();
+        
         if(!$category){
         return response()->json(['message' => 'category not found'], 404);
         }
@@ -56,10 +71,20 @@ class CategoryController extends Controller
         if(!$category){
             return response()->json(['message' => 'category was not found'], 404);
         }
+        
         $validateData = $request->validate([
             'name' => 'string',
             'image' => 'image'
         ]);
+        if ($request->hasFile('image')) {
+            $imageName = $request->file('image')->getClientOriginalName() . "-" . time() . "." . $request->file('image')->getClientOriginalExtension();
+            if (File::exists(public_path('images/categories/'.$category->image))) {
+                File::delete(public_path('images/categories/'.$category->image));
+            }
+            $request->file('image')->move(public_path('/images/categories'), $imageName);
+        } else {
+            $imageName = $category->image;
+        }
         $category->update($validateData);
         
         return response()->json(['message' => 'category was updated successfully' , $category] , 200);
@@ -73,6 +98,9 @@ class CategoryController extends Controller
         $category = Category::where('id' , $id)->first();
         if(!$category){
             return response()->json(['message' => 'category not found'], 404);
+        }
+        if (File::exists(public_path('images/categories/'.$category->image))) {
+            File::delete(public_path('images/categories/'.$category->image));
         }
         $category->delete();
         return response()->json(['message' => 'category deleted successfully' , $category], 200);

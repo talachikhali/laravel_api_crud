@@ -11,9 +11,9 @@ class Category extends Model
         'image'
     ];
 
-    public function getImageUrlAttr(){
+    public function getImageUrlAttribute(){
         if($this->image){
-            $path = "images/categories";
+            $path = "/images/categories";
             $imageName = $this->image;
             return url("$path/$imageName");
         }
